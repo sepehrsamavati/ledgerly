@@ -1,0 +1,32 @@
+{
+  "app": {
+    "title": "Ledgerly",
+    "tagline": "Privacy-friendly shared money ledger"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "groups": "Groups",
+    "settings": "Settings"
+  },
+  "mode": {
+    "clientOnly": "Client-Only Mode (IndexedDB)",
+    "backend": "Backend Mode"
+  },
+  "actions": {
+    "changeLanguage": "Language / زبان",
+    "addExpense": "Add Expense"
+  },
+  "dashboard": {
+    "welcome": "Welcome to Ledgerly",
+    "summary": "Overview of your shared balances and transactions"
+  },
+  "groups": {
+    "title": "Groups",
+    "empty": "No groups created yet."
+  },
+  "settings": {
+    "title": "Settings",
+    "language": "Language",
+    "storage": "Storage Backend"
+  }
+}
