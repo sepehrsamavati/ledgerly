@@ -1,5 +1,5 @@
 import React from 'react';
-import { Outlet, Link as RouterLink, useLocation } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   AppBar,
   Toolbar,
@@ -7,75 +7,150 @@ import {
   Container,
   Box,
   Button,
-  Stack,
   Chip,
+  Paper,
+  BottomNavigation,
+  BottomNavigationAction,
 } from '@mui/material';
+import DashboardIcon from '@mui/icons-material/Dashboard';
+import GroupIcon from '@mui/icons-material/Group';
+import SettingsIcon from '@mui/icons-material/Settings';
 import { useI18n } from '../i18n/index';
 import { getAppConfig } from '../config/index';
 
 export const MainLayout: React.FC = () => {
   const { t, language, setLanguage } = useI18n();
   const location = useLocation();
+  const navigate = useNavigate();
   const config = getAppConfig();
 
-  return (
-    <Box sx={{ flexGrow: 1, minHeight: '100vh', bgcolor: 'background.default' }}>
-      <AppBar position="static" elevation={1}>
-        <Toolbar>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontWeight: 'bold' }}>
-            {t('app.title')}
-          </Typography>
+  const currentTab = location.pathname.startsWith('/groups')
+    ? '/groups'
+    : location.pathname.startsWith('/settings')
+    ? '/settings'
+    : '/';
 
-          <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-            <Button
-              color="inherit"
-              component={RouterLink}
-              to="/"
-              sx={{ fontWeight: location.pathname === '/' ? 'bold' : 'normal' }}
-            >
-              {t('nav.dashboard')}
-            </Button>
-            <Button
-              color="inherit"
-              component={RouterLink}
-              to="/groups"
-              sx={{ fontWeight: location.pathname === '/groups' ? 'bold' : 'normal' }}
-            >
-              {t('nav.groups')}
-            </Button>
-            <Button
-              color="inherit"
-              component={RouterLink}
-              to="/settings"
-              sx={{ fontWeight: location.pathname === '/settings' ? 'bold' : 'normal' }}
-            >
-              {t('nav.settings')}
-            </Button>
+  return (
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        minHeight: '100vh',
+        bgcolor: 'grey.100',
+      }}
+    >
+      <Box
+        sx={{
+          width: '100%',
+          maxWidth: 600,
+          minHeight: '100vh',
+          bgcolor: 'background.paper',
+          display: 'flex',
+          flexDirection: 'column',
+          boxShadow: { sm: 3 },
+          position: 'relative',
+        }}
+      >
+        <AppBar position="sticky" elevation={1} color="primary">
+          <Toolbar variant="dense" sx={{ justifyContent: 'space-between', paddingInlineStart: 2, paddingInlineEnd: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography variant="h6" component="div" sx={{ fontWeight: 'bold' }}>
+                {t('app.title')}
+              </Typography>
+              <Chip
+                size="small"
+                label={config.mode === 'backend' ? t('mode.backend') : t('mode.clientOnly')}
+                color={config.mode === 'backend' ? 'secondary' : 'default'}
+                variant="outlined"
+                sx={{
+                  color: 'primary.contrastText',
+                  borderColor: 'rgba(255, 255, 255, 0.5)',
+                  fontSize: '0.7rem',
+                  height: 22,
+                  marginInlineStart: 1,
+                }}
+              />
+            </Box>
 
             <Button
               color="inherit"
               variant="outlined"
               size="small"
               onClick={() => setLanguage(language === 'en' ? 'fa' : 'en')}
-              sx={{ ml: 2 }}
+              sx={{
+                marginInlineStart: 'auto',
+                borderColor: 'rgba(255, 255, 255, 0.5)',
+                textTransform: 'uppercase',
+                fontWeight: 'bold',
+              }}
             >
               {language === 'en' ? 'FA' : 'EN'}
             </Button>
-          </Stack>
-        </Toolbar>
-      </AppBar>
+          </Toolbar>
+        </AppBar>
 
-      <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-        <Box sx={{ mb: 2 }}>
-          <Chip
-            size="small"
-            label={config.mode === 'backend' ? t('mode.backend') : t('mode.clientOnly')}
-            color={config.mode === 'backend' ? 'secondary' : 'primary'}
-            variant="outlined"
-          />
-        </Box>
-        <Outlet />
-      </Container>
+        <Container
+          component="main"
+          sx={{
+            flexGrow: 1,
+            pt: 3,
+            pb: 10,
+            paddingInlineStart: 2,
+            paddingInlineEnd: 2,
+          }}
+        >
+          <Outlet />
+        </Container>
+
+        <Paper
+          elevation={4}
+          sx={{
+            position: 'fixed',
+            bottom: 0,
+            insetInlineStart: 0,
+            insetInlineEnd: 0,
+            zIndex: 1100,
+            display: 'flex',
+            justifyContent: 'center',
+            bgcolor: 'background.paper',
+            borderTop: 1,
+            borderColor: 'divider',
+          }}
+        >
+          <Box sx={{ width: '100%', maxWidth: 600 }}>
+            <BottomNavigation
+              value={currentTab}
+              onChange={(_event, newValue) => {
+                navigate(newValue);
+              }}
+              showLabels
+              sx={{
+                '& .MuiBottomNavigationAction-root': {
+                  paddingInlineStart: 1,
+                  paddingInlineEnd: 1,
+                },
+              }}
+            >
+              <BottomNavigationAction
+                label={t('nav.dashboard')}
+                value="/"
+                icon={<DashboardIcon />}
+              />
+              <BottomNavigationAction
+                label={t('nav.groups')}
+                value="/groups"
+                icon={<GroupIcon />}
+              />
+              <BottomNavigationAction
+                label={t('nav.settings')}
+                value="/settings"
+                icon={<SettingsIcon />}
+              />
+            </BottomNavigation>
+          </Box>
+        </Paper>
+      </Box>
     </Box>
   );
 };
