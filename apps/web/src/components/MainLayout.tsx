@@ -26,7 +26,7 @@ export const MainLayout: React.FC = () => {
             {t('app.title')}
           </Typography>
 
-          <Stack direction="row" spacing={1} alignItems="center">
+          <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
             <Button
               color="inherit"
               component={RouterLink}

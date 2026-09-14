@@ -65,7 +65,7 @@ export const DashboardPage: React.FC = () => {
       <Typography variant="h4" gutterBottom>
         {t('dashboard.welcome')}
       </Typography>
-      <Typography color="text.secondary" paragraph>
+      <Typography color="text.secondary" sx={{ mb: 2 }}>
         {t('dashboard.summary')}
       </Typography>
 
@@ -84,7 +84,7 @@ export const DashboardPage: React.FC = () => {
 
           <Card variant="outlined">
             <CardContent>
-              <Typography variant="subtitle1" fontWeight="bold">
+              <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
                 Sample Core Engine Output:
               </Typography>
               <Typography variant="body2" sx={{ mt: 1 }}>
