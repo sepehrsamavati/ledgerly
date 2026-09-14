@@ -1,0 +1,32 @@
+{
+  "app": {
+    "title": "لجرلی",
+    "tagline": "دفتر حساب دنگ و پول مشترک حفظ‌کننده حریم خصوصی"
+  },
+  "nav": {
+    "dashboard": "داشبورد",
+    "groups": "گروه‌ها",
+    "settings": "تنظیمات"
+  },
+  "mode": {
+    "clientOnly": "حالت فقط کلاینت (IndexedDB)",
+    "backend": "حالت سرور"
+  },
+  "actions": {
+    "changeLanguage": "زبان / Language",
+    "addExpense": "افزودن هزینه"
+  },
+  "dashboard": {
+    "welcome": "به لجرلی خوش آمدید",
+    "summary": "خلاصه موجودی‌ها و تراکنش‌های مشترک شما"
+  },
+  "groups": {
+    "title": "گروه‌ها",
+    "empty": "هیچ گروهی هنوز ساخته نشده است."
+  },
+  "settings": {
+    "title": "تنظیمات",
+    "language": "زبان",
+    "storage": "پشتوانه ذخیره‌سازی"
+  }
+}
