@@ -4,6 +4,7 @@ import {
   formatMoney,
   DEFAULT_CURRENCIES,
   calculateEqualSplits,
+  calculatePercentageSplits,
   calculateParticipantBalances,
   calculateSettlement,
   validateTransaction,
@@ -38,6 +39,46 @@ describe('@ledgerly/core', () => {
       expect(splits[1].amount).toBe(333n);
       expect(splits[2].amount).toBe(333n);
       expect(splits.reduce((acc, s) => acc + s.amount, 0n)).toBe(1000n);
+    });
+
+    it('splits amounts by percentage accurately', () => {
+      const total = 10000n; // $100.00 split 60% / 40%
+      const splits = calculatePercentageSplits(total, [
+        { participantId: 'p1', percentage: 60 },
+        { participantId: 'p2', percentage: 40 },
+      ]);
+      expect(splits[0].amount).toBe(6000n);
+      expect(splits[1].amount).toBe(4000n);
+      expect(splits.reduce((acc, s) => acc + s.amount, 0n)).toBe(10000n);
+    });
+
+    it('calculates participant balances for business income and expense transactions', () => {
+      // Income: p1 received $100 business income, split 60% (p1) / 40% (p2)
+      const incomeTx: Transaction = {
+        id: 'tx1',
+        groupId: 'g1',
+        title: 'Project Payment',
+        type: 'income',
+        amount: 10000n, // $100.00
+        currencyCode: 'USD',
+        payerId: 'p1',
+        splits: [
+          { participantId: 'p1', amount: 6000n },
+          { participantId: 'p2', amount: 4000n },
+        ],
+        date: '2025-01-01',
+        createdAt: '2025-01-01',
+        updatedAt: '2025-01-01',
+      };
+
+      const balances = calculateParticipantBalances([incomeTx]);
+      // p1 received $100, but is entitled to $60 -> p1 net balance is -$40 (owes $40 to group/p2)
+      // p2 is entitled to $40 -> p2 net balance is +$40 (is owed $40 from p1)
+      expect(balances['p1']).toBe(-4000n);
+      expect(balances['p2']).toBe(4000n);
+
+      const debts = calculateSettlement(balances);
+      expect(debts).toEqual([{ from: 'p1', to: 'p2', amount: 4000n }]);
     });
 
     it('calculates participant balances and settlement debts correctly', () => {

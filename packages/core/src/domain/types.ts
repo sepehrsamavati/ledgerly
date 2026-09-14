@@ -5,12 +5,19 @@ export interface Participant {
   avatarUrl?: string;
 }
 
+export interface GroupMember {
+  participantId: string;
+  percentage?: number;
+  shares?: number;
+}
+
 export interface Group {
   id: string;
   name: string;
   description?: string;
   defaultCurrencyCode: string;
   participantIds: string[];
+  members?: GroupMember[];
   createdAt: string;
   updatedAt: string;
 }

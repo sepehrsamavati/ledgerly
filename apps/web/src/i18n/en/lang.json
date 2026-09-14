@@ -14,15 +14,46 @@
   },
   "actions": {
     "changeLanguage": "Language / زبان",
-    "addExpense": "Add Expense"
+    "addExpense": "Add Expense",
+    "createGroup": "Create Group",
+    "addPerson": "Add Person",
+    "addTransaction": "Add Transaction",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete"
   },
   "dashboard": {
     "welcome": "Welcome to Ledgerly",
     "summary": "Overview of your shared balances and transactions"
   },
   "groups": {
-    "title": "Groups",
-    "empty": "No groups created yet."
+    "title": "Groups & Business Sharing",
+    "empty": "No groups created yet. Create a group to start sharing income and expenses.",
+    "selectGroup": "Select a group to view details",
+    "createNew": "Create New Group",
+    "groupName": "Group Name",
+    "description": "Description",
+    "currency": "Default Currency",
+    "members": "Group Members & Sharing Percentages",
+    "memberName": "Name",
+    "memberEmail": "Email (optional)",
+    "memberPercentage": "Sharing %",
+    "addMember": "Add Member",
+    "balances": "Net Balances",
+    "settlement": "Settlement & Debts",
+    "transactions": "Transactions (Income / Expense)",
+    "type": "Type",
+    "income": "Business Income (Received)",
+    "outcome": "Expense / Outcome (Paid)",
+    "payer": "Paid by / Received by",
+    "splitMethod": "Split Method",
+    "equalSplit": "Equal Split",
+    "percentageSplit": "Percentage Split",
+    "amount": "Amount",
+    "date": "Date",
+    "titleLabel": "Title",
+    "settleUp": "Settlement suggest:",
+    "owesTo": "owes"
   },
   "settings": {
     "title": "Settings",

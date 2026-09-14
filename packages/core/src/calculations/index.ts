@@ -32,6 +32,37 @@ export function calculateEqualSplits(
   });
 }
 
+export function calculatePercentageSplits(
+  totalAmount: bigint,
+  participantPercentages: { participantId: string; percentage: number }[]
+): Split[] {
+  if (participantPercentages.length === 0) return [];
+
+  let allocated = 0n;
+  const splits: Split[] = [];
+
+  participantPercentages.forEach((item, idx) => {
+    if (idx === participantPercentages.length - 1) {
+      const shareAmount = totalAmount - allocated;
+      splits.push({
+        participantId: item.participantId,
+        amount: shareAmount,
+        percentage: item.percentage,
+      });
+    } else {
+      const shareAmount = (totalAmount * BigInt(Math.round(item.percentage * 100))) / 10000n;
+      allocated += shareAmount;
+      splits.push({
+        participantId: item.participantId,
+        amount: shareAmount,
+        percentage: item.percentage,
+      });
+    }
+  });
+
+  return splits;
+}
+
 export function calculateParticipantBalances(
   transactions: Transaction[]
 ): Record<string, bigint> {
@@ -43,12 +74,27 @@ export function calculateParticipantBalances(
     }
 
     if (tx.type === 'expense') {
+      // Expense (outcome): Payer paid for everyone.
+      // Payer is credited the full amount (+tx.amount).
+      // Each split participant owes their share (-split.amount).
       balances[tx.payerId] += tx.amount;
       for (const split of tx.splits) {
         if (!balances[split.participantId]) {
           balances[split.participantId] = 0n;
         }
         balances[split.participantId] -= split.amount;
+      }
+    } else if (tx.type === 'income') {
+      // Income (business revenue/income): Payer received business income on behalf of the group.
+      // Payer received tx.amount (+payer), so payer owes the group.
+      // Payer is debited (-tx.amount).
+      // Each split participant is credited (+split.amount) as their share of income.
+      balances[tx.payerId] -= tx.amount;
+      for (const split of tx.splits) {
+        if (!balances[split.participantId]) {
+          balances[split.participantId] = 0n;
+        }
+        balances[split.participantId] += split.amount;
       }
     } else if (tx.type === 'transfer') {
       balances[tx.payerId] += tx.amount;
