@@ -24,21 +24,26 @@ import {
   IconButton,
   ToggleButtonGroup,
   ToggleButton,
+  Checkbox,
+  FormGroup,
+  FormControlLabel,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
+import ShoppingBagIcon from '@mui/icons-material/ShoppingBag';
+import StorefrontIcon from '@mui/icons-material/Storefront';
 import { useI18n } from '../i18n/index';
 import { useRepository } from '../context/RepositoryContext';
 import {
   Ledger,
   Group,
+  GroupType,
   Participant,
   Transaction,
   TransactionType,
-  Split,
   DEFAULT_CURRENCIES,
   formatMoney,
   createMoney,
@@ -56,6 +61,7 @@ export const GroupsPage: React.FC = () => {
 
   // Dialog state: Create Group
   const [openGroupDialog, setOpenGroupDialog] = useState(false);
+  const [newGroupType, setNewGroupType] = useState<GroupType>('costing');
   const [newGroupName, setNewGroupName] = useState('');
   const [newGroupDesc, setNewGroupDesc] = useState('');
   const [newGroupCurrency, setNewGroupCurrency] = useState('USD');
@@ -65,13 +71,19 @@ export const GroupsPage: React.FC = () => {
   const [memberName, setMemberName] = useState('');
   const [memberPercentage, setMemberPercentage] = useState<number>(50);
 
-  // Dialog state: Add Transaction
-  const [openTxDialog, setOpenTxDialog] = useState(false);
-  const [txTitle, setTxTitle] = useState('');
-  const [txType, setTxType] = useState<TransactionType>('expense');
-  const [txAmount, setTxAmount] = useState<string>('');
-  const [txPayerId, setTxPayerId] = useState('');
-  const [splitMethod, setSplitMethod] = useState<'equal' | 'percentage'>('equal');
+  // Dialog state: Add Transaction for Group Costing
+  const [openCostingTxDialog, setOpenCostingTxDialog] = useState(false);
+  const [costingTitle, setCostingTitle] = useState('');
+  const [costingAmount, setCostingAmount] = useState<string>('');
+  const [costingPayerId, setCostingPayerId] = useState('');
+  const [costingTargetIds, setCostingTargetIds] = useState<string[]>([]);
+
+  // Dialog state: Add Transaction for Business Sharing
+  const [openBusinessTxDialog, setOpenBusinessTxDialog] = useState(false);
+  const [businessTitle, setBusinessTitle] = useState('');
+  const [businessTxType, setBusinessTxType] = useState<TransactionType>('income');
+  const [businessAmount, setBusinessAmount] = useState<string>('');
+  const [businessPayerId, setBusinessPayerId] = useState('');
 
   const loadLedger = async () => {
     let l = await repo.getLedger('default');
@@ -82,13 +94,24 @@ export const GroupsPage: React.FC = () => {
         groups: [
           {
             id: 'g1',
-            name: 'Business Joint Venture',
-            description: '50-50 revenue & expense sharing',
+            name: 'Trip to Beach (Group Costing)',
+            type: 'costing',
+            description: 'Itemized equal sharing among selected members',
+            defaultCurrencyCode: 'USD',
+            participantIds: ['p1', 'p2', 'p3'],
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+          {
+            id: 'g2',
+            name: 'Software Agency (Business Sharing)',
+            type: 'business',
+            description: 'Percentage-based revenue & expense sharing',
             defaultCurrencyCode: 'USD',
             participantIds: ['p1', 'p2'],
             members: [
-              { participantId: 'p1', percentage: 50 },
-              { participantId: 'p2', percentage: 50 },
+              { participantId: 'p1', percentage: 60 },
+              { participantId: 'p2', percentage: 40 },
             ],
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
@@ -97,6 +120,7 @@ export const GroupsPage: React.FC = () => {
         participants: [
           { id: 'p1', name: 'Alice' },
           { id: 'p2', name: 'Bob' },
+          { id: 'p3', name: 'Charlie' },
         ],
         transactions: [],
         createdAt: new Date().toISOString(),
@@ -117,6 +141,8 @@ export const GroupsPage: React.FC = () => {
   if (!ledger) return null;
 
   const currentGroup = ledger.groups.find((g) => g.id === selectedGroupId);
+  const isBusinessGroup = currentGroup?.type === 'business';
+
   const groupParticipants = currentGroup
     ? ledger.participants.filter((p) => currentGroup.participantIds.includes(p.id))
     : [];
@@ -140,6 +166,7 @@ export const GroupsPage: React.FC = () => {
     const newGroup: Group = {
       id: `g_${Date.now()}`,
       name: newGroupName,
+      type: newGroupType,
       description: newGroupDesc,
       defaultCurrencyCode: newGroupCurrency,
       participantIds: [],
@@ -148,7 +175,7 @@ export const GroupsPage: React.FC = () => {
       updatedAt: new Date().toISOString(),
     };
 
-    const updatedLedger = {
+    const updatedLedger: Ledger = {
       ...ledger,
       groups: [...ledger.groups, newGroup],
       updatedAt: new Date().toISOString(),
@@ -197,36 +224,24 @@ export const GroupsPage: React.FC = () => {
     setMemberName('');
   };
 
-  const handleAddTransaction = async () => {
-    if (!currentGroup || !txTitle.trim() || !txAmount || !txPayerId) return;
+  // Group Costing Transaction (Equal split among selected participants)
+  const handleAddCostingTransaction = async () => {
+    if (!currentGroup || !costingTitle.trim() || !costingAmount || !costingPayerId || costingTargetIds.length === 0) return;
 
-    const numAmount = parseFloat(txAmount);
+    const numAmount = parseFloat(costingAmount);
     if (isNaN(numAmount) || numAmount <= 0) return;
 
     const money = createMoney(numAmount, currencyObj);
-    let splits: Split[] = [];
-
-    if (splitMethod === 'equal') {
-      splits = calculateEqualSplits(money.amount, currentGroup.participantIds);
-    } else {
-      const pPercentages = currentGroup.participantIds.map((pid) => {
-        const mem = currentGroup.members?.find((m) => m.participantId === pid);
-        return {
-          participantId: pid,
-          percentage: mem?.percentage ?? (100 / currentGroup.participantIds.length),
-        };
-      });
-      splits = calculatePercentageSplits(money.amount, pPercentages);
-    }
+    const splits = calculateEqualSplits(money.amount, costingTargetIds);
 
     const newTx: Transaction = {
       id: `tx_${Date.now()}`,
       groupId: currentGroup.id,
-      title: txTitle,
-      type: txType,
+      title: costingTitle,
+      type: 'expense',
       amount: money.amount,
       currencyCode: currentGroup.defaultCurrencyCode,
-      payerId: txPayerId,
+      payerId: costingPayerId,
       splits,
       date: new Date().toISOString(),
       createdAt: new Date().toISOString(),
@@ -241,9 +256,55 @@ export const GroupsPage: React.FC = () => {
 
     await repo.saveLedger(updatedLedger);
     setLedger(updatedLedger);
-    setOpenTxDialog(false);
-    setTxTitle('');
-    setTxAmount('');
+    setOpenCostingTxDialog(false);
+    setCostingTitle('');
+    setCostingAmount('');
+  };
+
+  // Business Sharing Transaction (Percentage split based on partner shares)
+  const handleAddBusinessTransaction = async () => {
+    if (!currentGroup || !businessTitle.trim() || !businessAmount || !businessPayerId) return;
+
+    const numAmount = parseFloat(businessAmount);
+    if (isNaN(numAmount) || numAmount <= 0) return;
+
+    const money = createMoney(numAmount, currencyObj);
+
+    const pPercentages = currentGroup.participantIds.map((pid) => {
+      const mem = currentGroup.members?.find((m) => m.participantId === pid);
+      return {
+        participantId: pid,
+        percentage: mem?.percentage ?? (100 / currentGroup.participantIds.length),
+      };
+    });
+
+    const splits = calculatePercentageSplits(money.amount, pPercentages);
+
+    const newTx: Transaction = {
+      id: `tx_${Date.now()}`,
+      groupId: currentGroup.id,
+      title: businessTitle,
+      type: businessTxType,
+      amount: money.amount,
+      currencyCode: currentGroup.defaultCurrencyCode,
+      payerId: businessPayerId,
+      splits,
+      date: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    const updatedLedger: Ledger = {
+      ...ledger,
+      transactions: [...ledger.transactions, newTx],
+      updatedAt: new Date().toISOString(),
+    };
+
+    await repo.saveLedger(updatedLedger);
+    setLedger(updatedLedger);
+    setOpenBusinessTxDialog(false);
+    setBusinessTitle('');
+    setBusinessAmount('');
   };
 
   const handleDeleteTransaction = async (txId: string) => {
@@ -273,14 +334,15 @@ export const GroupsPage: React.FC = () => {
         </Button>
       </Box>
 
-      {/* Group Selector */}
+      {/* Group Selector Chips */}
       {ledger.groups.length > 0 && (
         <Paper variant="outlined" sx={{ p: 1.5, mb: 3, display: 'flex', gap: 1, overflowX: 'auto' }}>
           {ledger.groups.map((g) => (
             <Chip
               key={g.id}
+              icon={g.type === 'business' ? <StorefrontIcon /> : <ShoppingBagIcon />}
               label={g.name}
-              color={selectedGroupId === g.id ? 'primary' : 'default'}
+              color={selectedGroupId === g.id ? (g.type === 'business' ? 'secondary' : 'primary') : 'default'}
               variant={selectedGroupId === g.id ? 'filled' : 'outlined'}
               onClick={() => setSelectedGroupId(g.id)}
               sx={{ fontWeight: selectedGroupId === g.id ? 'bold' : 'normal', cursor: 'pointer' }}
@@ -302,14 +364,20 @@ export const GroupsPage: React.FC = () => {
             <CardContent>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <Box>
-                  <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-                    {currentGroup.name}
-                  </Typography>
-                  {currentGroup.description && (
-                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                      {currentGroup.description}
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                      {currentGroup.name}
                     </Typography>
-                  )}
+                    <Chip
+                      label={isBusinessGroup ? t('groups.businessModel') : t('groups.costingModel')}
+                      color={isBusinessGroup ? 'secondary' : 'primary'}
+                      size="small"
+                      variant="outlined"
+                    />
+                  </Box>
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                    {currentGroup.description || (isBusinessGroup ? t('groups.businessDesc') : t('groups.costingDesc'))}
+                  </Typography>
                   <Chip
                     label={`Currency: ${currentGroup.defaultCurrencyCode}`}
                     size="small"
@@ -329,12 +397,12 @@ export const GroupsPage: React.FC = () => {
               <Divider sx={{ my: 2 }} />
 
               <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>
-                {t('groups.members')}
+                {isBusinessGroup ? t('groups.businessMembers') : t('groups.members')}
               </Typography>
 
               {groupParticipants.length === 0 ? (
                 <Typography variant="body2" color="text.secondary">
-                  No members added yet. Add group partners/members to start sharing.
+                  No members added yet. Add group members to start sharing.
                 </Typography>
               ) : (
                 <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
@@ -343,9 +411,9 @@ export const GroupsPage: React.FC = () => {
                     return (
                       <Chip
                         key={p.id}
-                        label={`${p.name} (${memberInfo?.percentage ?? 0}%)`}
+                        label={isBusinessGroup ? `${p.name} (${memberInfo?.percentage ?? 0}%)` : p.name}
                         variant="outlined"
-                        color="secondary"
+                        color={isBusinessGroup ? 'secondary' : 'default'}
                         size="small"
                       />
                     );
@@ -364,13 +432,13 @@ export const GroupsPage: React.FC = () => {
                   {t('groups.balances')}
                 </Typography>
 
-                <GridContainer>
+                <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', mt: 1 }}>
                   {groupParticipants.map((p) => {
                     const balance = netBalances[p.id] || 0n;
                     const isPositive = balance > 0n;
                     const isNegative = balance < 0n;
                     return (
-                      <Paper key={p.id} variant="outlined" sx={{ p: 1.5, flex: 1, minWidth: 140 }}>
+                      <Paper key={p.id} variant="outlined" sx={{ p: 1.5, flex: 1, minWidth: 130 }}>
                         <Typography variant="caption" color="text.secondary">
                           {p.name}
                         </Typography>
@@ -386,7 +454,7 @@ export const GroupsPage: React.FC = () => {
                       </Paper>
                     );
                   })}
-                </GridContainer>
+                </Box>
 
                 {settlements.length > 0 && (
                   <Box sx={{ mt: 2, p: 1.5, bgcolor: 'action.hover', borderRadius: 1 }}>
@@ -409,32 +477,38 @@ export const GroupsPage: React.FC = () => {
             </Card>
           )}
 
-          {/* Transactions (Business Income / Expense) */}
+          {/* Transactions List */}
           <Card variant="outlined">
             <CardContent>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                 <Typography variant="subtitle1" sx={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 1 }}>
                   <ReceiptLongIcon color="primary" fontSize="small" />
-                  {t('groups.transactions')}
+                  {isBusinessGroup ? t('groups.businessTransactions') : t('groups.transactions')}
                 </Typography>
                 <Button
                   variant="contained"
-                  color="secondary"
+                  color={isBusinessGroup ? 'secondary' : 'primary'}
                   size="small"
                   startIcon={<AddIcon />}
                   disabled={groupParticipants.length === 0}
                   onClick={() => {
-                    setTxPayerId(groupParticipants[0]?.id || '');
-                    setOpenTxDialog(true);
+                    if (isBusinessGroup) {
+                      setBusinessPayerId(groupParticipants[0]?.id || '');
+                      setOpenBusinessTxDialog(true);
+                    } else {
+                      setCostingPayerId(groupParticipants[0]?.id || '');
+                      setCostingTargetIds(groupParticipants.map((p) => p.id));
+                      setOpenCostingTxDialog(true);
+                    }
                   }}
                 >
-                  {t('actions.addTransaction')}
+                  {isBusinessGroup ? t('actions.addTransaction') : t('actions.addItem')}
                 </Button>
               </Box>
 
               {groupTransactions.length === 0 ? (
                 <Typography variant="body2" color="text.secondary" sx={{ py: 2, textAlign: 'center' }}>
-                  No income or expense transactions recorded yet.
+                  No transactions recorded yet.
                 </Typography>
               ) : (
                 <TableContainer>
@@ -442,7 +516,7 @@ export const GroupsPage: React.FC = () => {
                     <TableHead>
                       <TableRow>
                         <TableCell>{t('groups.titleLabel')}</TableCell>
-                        <TableCell>{t('groups.type')}</TableCell>
+                        {isBusinessGroup && <TableCell>{t('groups.type')}</TableCell>}
                         <TableCell>{t('groups.payer')}</TableCell>
                         <TableCell align="right">{t('groups.amount')}</TableCell>
                         <TableCell align="center"></TableCell>
@@ -455,14 +529,16 @@ export const GroupsPage: React.FC = () => {
                         return (
                           <TableRow key={tx.id}>
                             <TableCell sx={{ fontWeight: 'medium' }}>{tx.title}</TableCell>
-                            <TableCell>
-                              <Chip
-                                label={isIncome ? t('groups.income') : t('groups.outcome')}
-                                color={isIncome ? 'success' : 'error'}
-                                size="small"
-                                variant="outlined"
-                              />
-                            </TableCell>
+                            {isBusinessGroup && (
+                              <TableCell>
+                                <Chip
+                                  label={isIncome ? t('groups.income') : t('groups.outcome')}
+                                  color={isIncome ? 'success' : 'error'}
+                                  size="small"
+                                  variant="outlined"
+                                />
+                              </TableCell>
+                            )}
                             <TableCell>{payer?.name || tx.payerId}</TableCell>
                             <TableCell align="right" sx={{ fontWeight: 'bold' }}>
                               {formatMoney({ amount: tx.amount, currencyCode: tx.currencyCode }, currencyObj)}
@@ -492,7 +568,25 @@ export const GroupsPage: React.FC = () => {
       <Dialog open={openGroupDialog} onClose={() => setOpenGroupDialog(false)} fullWidth maxWidth="xs">
         <DialogTitle>{t('groups.createNew')}</DialogTitle>
         <DialogContent dividers>
-          <Stack spacing= {2} sx={{ mt: 1 }}>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <Typography variant="caption" color="text.secondary">
+              {t('groups.modelType')}
+            </Typography>
+            <ToggleButtonGroup
+              value={newGroupType}
+              exclusive
+              fullWidth
+              size="small"
+              onChange={(_e, val) => val && setNewGroupType(val)}
+            >
+              <ToggleButton value="costing">
+                {t('groups.costingModel')}
+              </ToggleButton>
+              <ToggleButton value="business" color="secondary">
+                {t('groups.businessModel')}
+              </ToggleButton>
+            </ToggleButtonGroup>
+
             <TextField
               label={t('groups.groupName')}
               fullWidth
@@ -543,15 +637,17 @@ export const GroupsPage: React.FC = () => {
               value={memberName}
               onChange={(e) => setMemberName(e.target.value)}
             />
-            <TextField
-              label={t('groups.memberPercentage')}
-              type="number"
-              fullWidth
-              size="small"
-              value={memberPercentage}
-              onChange={(e) => setMemberPercentage(Number(e.target.value))}
-              helperText="Percentage share for income & expense distribution"
-            />
+            {isBusinessGroup && (
+              <TextField
+                label={t('groups.memberPercentage')}
+                type="number"
+                fullWidth
+                size="small"
+                value={memberPercentage}
+                onChange={(e) => setMemberPercentage(Number(e.target.value))}
+                helperText="Percentage share for business income & expense distribution"
+              />
+            )}
           </Stack>
         </DialogContent>
         <DialogActions>
@@ -560,32 +656,17 @@ export const GroupsPage: React.FC = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Dialog: Add Transaction */}
-      <Dialog open={openTxDialog} onClose={() => setOpenTxDialog(false)} fullWidth maxWidth="xs">
-        <DialogTitle>{t('actions.addTransaction')}</DialogTitle>
+      {/* Dialog: Group Costing Item (Equal split among selected participants) */}
+      <Dialog open={openCostingTxDialog} onClose={() => setOpenCostingTxDialog(false)} fullWidth maxWidth="xs">
+        <DialogTitle>{t('actions.addItem')}</DialogTitle>
         <DialogContent dividers>
           <Stack spacing={2} sx={{ mt: 1 }}>
-            <ToggleButtonGroup
-              value={txType}
-              exclusive
-              fullWidth
-              size="small"
-              onChange={(_e, val) => val && setTxType(val)}
-            >
-              <ToggleButton value="expense" color="error">
-                {t('groups.outcome')}
-              </ToggleButton>
-              <ToggleButton value="income" color="success">
-                {t('groups.income')}
-              </ToggleButton>
-            </ToggleButtonGroup>
-
             <TextField
-              label={t('groups.titleLabel')}
+              label={t('groups.itemTitle')}
               fullWidth
               size="small"
-              value={txTitle}
-              onChange={(e) => setTxTitle(e.target.value)}
+              value={costingTitle}
+              onChange={(e) => setCostingTitle(e.target.value)}
             />
 
             <TextField
@@ -593,8 +674,8 @@ export const GroupsPage: React.FC = () => {
               type="number"
               fullWidth
               size="small"
-              value={txAmount}
-              onChange={(e) => setTxAmount(e.target.value)}
+              value={costingAmount}
+              onChange={(e) => setCostingAmount(e.target.value)}
             />
 
             <TextField
@@ -602,8 +683,8 @@ export const GroupsPage: React.FC = () => {
               label={t('groups.payer')}
               fullWidth
               size="small"
-              value={txPayerId}
-              onChange={(e) => setTxPayerId(e.target.value)}
+              value={costingPayerId}
+              onChange={(e) => setCostingPayerId(e.target.value)}
             >
               {groupParticipants.map((p) => (
                 <MenuItem key={p.id} value={p.id}>
@@ -612,28 +693,95 @@ export const GroupsPage: React.FC = () => {
               ))}
             </TextField>
 
-            <TextField
-              select
-              label={t('groups.splitMethod')}
+            <Typography variant="caption" color="text.secondary">
+              {t('groups.splitAmong')}
+            </Typography>
+            <FormGroup>
+              {groupParticipants.map((p) => (
+                <FormControlLabel
+                  key={p.id}
+                  control={
+                    <Checkbox
+                      checked={costingTargetIds.includes(p.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setCostingTargetIds([...costingTargetIds, p.id]);
+                        } else {
+                          setCostingTargetIds(costingTargetIds.filter((id) => id !== p.id));
+                        }
+                      }}
+                    />
+                  }
+                  label={p.name}
+                />
+              ))}
+            </FormGroup>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenCostingTxDialog(false)}>{t('actions.cancel')}</Button>
+          <Button variant="contained" onClick={handleAddCostingTransaction}>{t('actions.save')}</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Dialog: Business Sharing Transaction (Percentage split) */}
+      <Dialog open={openBusinessTxDialog} onClose={() => setOpenBusinessTxDialog(false)} fullWidth maxWidth="xs">
+        <DialogTitle>{t('actions.addTransaction')}</DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <ToggleButtonGroup
+              value={businessTxType}
+              exclusive
               fullWidth
               size="small"
-              value={splitMethod}
-              onChange={(e) => setSplitMethod(e.target.value as 'equal' | 'percentage')}
+              onChange={(_e, val) => val && setBusinessTxType(val)}
             >
-              <MenuItem value="equal">{t('groups.equalSplit')}</MenuItem>
-              <MenuItem value="percentage">{t('groups.percentageSplit')}</MenuItem>
+              <ToggleButton value="income" color="success">
+                {t('groups.income')}
+              </ToggleButton>
+              <ToggleButton value="expense" color="error">
+                {t('groups.outcome')}
+              </ToggleButton>
+            </ToggleButtonGroup>
+
+            <TextField
+              label={t('groups.titleLabel')}
+              fullWidth
+              size="small"
+              value={businessTitle}
+              onChange={(e) => setBusinessTitle(e.target.value)}
+            />
+
+            <TextField
+              label={`${t('groups.amount')} (${currencyObj.symbol})`}
+              type="number"
+              fullWidth
+              size="small"
+              value={businessAmount}
+              onChange={(e) => setBusinessAmount(e.target.value)}
+            />
+
+            <TextField
+              select
+              label={t('groups.receiver')}
+              fullWidth
+              size="small"
+              value={businessPayerId}
+              onChange={(e) => setBusinessPayerId(e.target.value)}
+            >
+              {groupParticipants.map((p) => (
+                <MenuItem key={p.id} value={p.id}>
+                  {p.name}
+                </MenuItem>
+              ))}
             </TextField>
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenTxDialog(false)}>{t('actions.cancel')}</Button>
-          <Button variant="contained" onClick={handleAddTransaction}>{t('actions.save')}</Button>
+          <Button onClick={() => setOpenBusinessTxDialog(false)}>{t('actions.cancel')}</Button>
+          <Button variant="contained" color="secondary" onClick={handleAddBusinessTransaction}>{t('actions.save')}</Button>
         </DialogActions>
       </Dialog>
     </Box>
   );
 };
-
-const GridContainer: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', mt: 1 }}>{children}</Box>
-);

@@ -5,6 +5,8 @@ export interface Participant {
   avatarUrl?: string;
 }
 
+export type GroupType = 'costing' | 'business';
+
 export interface GroupMember {
   participantId: string;
   percentage?: number;
@@ -14,6 +16,7 @@ export interface GroupMember {
 export interface Group {
   id: string;
   name: string;
+  type?: GroupType;
   description?: string;
   defaultCurrencyCode: string;
   participantIds: string[];
