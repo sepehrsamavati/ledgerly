@@ -21,6 +21,12 @@ export async function ledgerRoutes(fastify: FastifyInstance, options: { controll
   fastify.get('/api/ledgers/:id/participants', (req, reply) => controller.getParticipants(req as any, reply));
   fastify.post('/api/ledgers/:id/participants', (req, reply) => controller.saveParticipant(req as any, reply));
 
+  fastify.get('/api/ledgers/:id/rates', (req, reply) => controller.getExchangeRates(req as any, reply));
+  fastify.post('/api/ledgers/:id/rates', (req, reply) => controller.saveExchangeRate(req as any, reply));
+
+  fastify.get('/api/ledgers/:id/currencies', (req, reply) => controller.getCurrencies(req as any, reply));
+  fastify.post('/api/ledgers/:id/currencies', (req, reply) => controller.saveCurrency(req as any, reply));
+
   fastify.get('/api/ledgers/:id/balances', (req, reply) => controller.getBalances(req as any, reply));
   fastify.get('/api/ledgers/:id/settlement', (req, reply) => controller.getSettlement(req as any, reply));
 

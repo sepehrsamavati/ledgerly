@@ -1,5 +1,15 @@
 import { LedgerRepository } from '../repository/interface.js';
-import { Ledger, Group, Transaction, Participant, serializeLedger, deserializeLedger } from '@ledgerly/core';
+import {
+  Ledger,
+  Group,
+  Transaction,
+  Participant,
+  Currency,
+  ExchangeRate,
+  DEFAULT_CURRENCIES,
+  serializeLedger,
+  deserializeLedger,
+} from '@ledgerly/core';
 
 const DB_NAME = 'ledgerly_db';
 const DB_VERSION = 1;
@@ -148,6 +158,64 @@ export class IndexedDBRepository implements LedgerRepository {
     const idx = l.participants.findIndex((p) => p.id === participant.id);
     if (idx >= 0) l.participants[idx] = participant;
     else l.participants.push(participant);
+    await this.saveLedger(l);
+  }
+
+  async getExchangeRates(ledgerId: string): Promise<ExchangeRate[]> {
+    const l = await this.getLedger(ledgerId);
+    return l?.exchangeRates || [];
+  }
+
+  async saveExchangeRate(ledgerId: string, rate: ExchangeRate): Promise<void> {
+    let l = await this.getLedger(ledgerId);
+    if (!l) {
+      l = {
+        id: ledgerId,
+        title: 'Default Ledger',
+        groups: [],
+        participants: [],
+        transactions: [],
+        exchangeRates: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+    }
+    const rates = l.exchangeRates || [];
+    const idx = rates.findIndex(
+      (r) =>
+        r.id === rate.id ||
+        (r.fromCurrencyCode === rate.fromCurrencyCode && r.toCurrencyCode === rate.toCurrencyCode)
+    );
+    if (idx >= 0) rates[idx] = rate;
+    else rates.push(rate);
+    l.exchangeRates = rates;
+    await this.saveLedger(l);
+  }
+
+  async getCurrencies(ledgerId: string): Promise<Currency[]> {
+    const l = await this.getLedger(ledgerId);
+    return l?.currencies && l.currencies.length > 0 ? l.currencies : DEFAULT_CURRENCIES;
+  }
+
+  async saveCurrency(ledgerId: string, currency: Currency): Promise<void> {
+    let l = await this.getLedger(ledgerId);
+    if (!l) {
+      l = {
+        id: ledgerId,
+        title: 'Default Ledger',
+        groups: [],
+        participants: [],
+        transactions: [],
+        currencies: [...DEFAULT_CURRENCIES],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+    }
+    const currencies = l.currencies || [...DEFAULT_CURRENCIES];
+    const idx = currencies.findIndex((c) => c.code === currency.code || c.id === currency.id);
+    if (idx >= 0) currencies[idx] = currency;
+    else currencies.push(currency);
+    l.currencies = currencies;
     await this.saveLedger(l);
   }
 

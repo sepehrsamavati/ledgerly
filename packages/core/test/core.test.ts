@@ -12,6 +12,9 @@ import {
   deserializeLedger,
   Ledger,
   Transaction,
+  findExchangeRate,
+  convertAmount,
+  calculateParticipantBalancesWithRates,
 } from '../src/index.js';
 
 describe('@ledgerly/core', () => {
@@ -109,6 +112,43 @@ describe('@ledgerly/core', () => {
       expect(debts).toHaveLength(2);
       expect(debts).toContainEqual({ from: 'p2', to: 'p1', amount: 1000n });
       expect(debts).toContainEqual({ from: 'p3', to: 'p1', amount: 1000n });
+    });
+
+    it('converts amounts and calculates balances with exchange rates', () => {
+      const rates = [
+        { id: 'r1', fromCurrencyCode: 'EUR', toCurrencyCode: 'USD', rate: 1.1, updatedAt: '2025-01-01' },
+      ];
+
+      expect(findExchangeRate('EUR', 'USD', rates)).toBe(1.1);
+      expect(findExchangeRate('USD', 'EUR', rates)).toBeCloseTo(1 / 1.1);
+
+      // 100.00 EUR (10000 minor units) -> 110.00 USD (11000 minor units)
+      const converted = convertAmount(10000n, 'EUR', 'USD', rates);
+      expect(converted).toBe(11000n);
+
+      const eurTx: Transaction = {
+        id: 'tx1',
+        groupId: 'g1',
+        title: 'European Dinner',
+        type: 'expense',
+        amount: 10000n, // 100.00 EUR
+        currencyCode: 'EUR',
+        payerId: 'p1',
+        splits: [
+          { participantId: 'p1', amount: 5000n }, // 50 EUR
+          { participantId: 'p2', amount: 5000n }, // 50 EUR
+        ],
+        date: '2025-01-01',
+        createdAt: '2025-01-01',
+        updatedAt: '2025-01-01',
+      };
+
+      const balancesInUSD = calculateParticipantBalancesWithRates([eurTx], 'USD', rates);
+      // Payer p1 paid 100 EUR = 110 USD. Share is 50 EUR = 55 USD.
+      // Net p1 = +55 USD (5500n)
+      // Net p2 = -55 USD (-5500n)
+      expect(balancesInUSD['p1']).toBe(5500n);
+      expect(balancesInUSD['p2']).toBe(-5500n);
     });
   });
 

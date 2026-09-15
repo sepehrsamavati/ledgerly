@@ -1,4 +1,4 @@
-import { Ledger, Group, Transaction, Participant } from '@ledgerly/core';
+import { Ledger, Group, Transaction, Participant, Currency, ExchangeRate } from '@ledgerly/core';
 
 export interface LedgerRepository {
   getLedger(id: string): Promise<Ledger | null>;
@@ -13,6 +13,12 @@ export interface LedgerRepository {
 
   getParticipants(ledgerId: string): Promise<Participant[]>;
   saveParticipant(ledgerId: string, participant: Participant): Promise<void>;
+
+  getExchangeRates(ledgerId: string): Promise<ExchangeRate[]>;
+  saveExchangeRate(ledgerId: string, rate: ExchangeRate): Promise<void>;
+
+  getCurrencies(ledgerId: string): Promise<Currency[]>;
+  saveCurrency(ledgerId: string, currency: Currency): Promise<void>;
 
   exportLedger(id: string): Promise<string>;
   importLedger(jsonString: string): Promise<Ledger>;

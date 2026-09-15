@@ -7,6 +7,8 @@ import {
   Group,
   Transaction,
   Participant,
+  Currency,
+  ExchangeRate,
   validateGroup,
   validateTransaction,
   validateParticipant,
@@ -115,6 +117,32 @@ export class LedgerController {
 
     await this.ledgerService.saveParticipant(id, participant);
     reply.type('application/json').send(stringifyWithBigInt(participant));
+  }
+
+  async getExchangeRates(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
+    const { id } = request.params;
+    const rates = await this.ledgerService.getExchangeRates(id);
+    reply.type('application/json').send(stringifyWithBigInt(rates));
+  }
+
+  async saveExchangeRate(request: FastifyRequest<{ Params: { id: string }; Body: unknown }>, reply: FastifyReply) {
+    const { id } = request.params;
+    const rate = parseWithBigInt<ExchangeRate>(request.body);
+    await this.ledgerService.saveExchangeRate(id, rate);
+    reply.type('application/json').send(stringifyWithBigInt(rate));
+  }
+
+  async getCurrencies(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
+    const { id } = request.params;
+    const currencies = await this.ledgerService.getCurrencies(id);
+    reply.type('application/json').send(stringifyWithBigInt(currencies));
+  }
+
+  async saveCurrency(request: FastifyRequest<{ Params: { id: string }; Body: unknown }>, reply: FastifyReply) {
+    const { id } = request.params;
+    const currency = parseWithBigInt<Currency>(request.body);
+    await this.ledgerService.saveCurrency(id, currency);
+    reply.type('application/json').send(stringifyWithBigInt(currency));
   }
 
   async getBalances(

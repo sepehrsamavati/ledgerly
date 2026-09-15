@@ -4,7 +4,9 @@ import {
   Group,
   Transaction,
   Participant,
-  calculateParticipantBalances,
+  Currency,
+  ExchangeRate,
+  calculateParticipantBalancesWithRates,
   calculateSettlement as calculateSettlementDebts,
   Debt,
 } from '@ledgerly/core';
@@ -52,9 +54,36 @@ export class LedgerService {
     await this.repository.saveParticipant(ledgerId, participant);
   }
 
+  async getExchangeRates(ledgerId: string): Promise<ExchangeRate[]> {
+    return this.repository.getExchangeRates(ledgerId);
+  }
+
+  async saveExchangeRate(ledgerId: string, rate: ExchangeRate): Promise<void> {
+    await this.repository.saveExchangeRate(ledgerId, rate);
+  }
+
+  async getCurrencies(ledgerId: string): Promise<Currency[]> {
+    return this.repository.getCurrencies(ledgerId);
+  }
+
+  async saveCurrency(ledgerId: string, currency: Currency): Promise<void> {
+    await this.repository.saveCurrency(ledgerId, currency);
+  }
+
   async calculateBalances(ledgerId: string, groupId?: string): Promise<Record<string, bigint>> {
     const transactions = await this.repository.getTransactions(ledgerId, groupId);
-    return calculateParticipantBalances(transactions);
+    const ledger = await this.repository.getLedger(ledgerId);
+    let targetCurrencyCode = 'USD';
+    if (groupId) {
+      const groups = await this.repository.getGroups(ledgerId);
+      const group = groups.find((g) => g.id === groupId);
+      if (group?.defaultCurrencyCode) targetCurrencyCode = group.defaultCurrencyCode;
+    } else if (ledger?.baseCurrencyCode) {
+      targetCurrencyCode = ledger.baseCurrencyCode;
+    }
+
+    const rates = ledger?.exchangeRates || [];
+    return calculateParticipantBalancesWithRates(transactions, targetCurrencyCode, rates);
   }
 
   async calculateSettlement(ledgerId: string, groupId?: string): Promise<Debt[]> {

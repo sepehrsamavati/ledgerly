@@ -1,3 +1,5 @@
+import { Currency, ExchangeRate } from './currency.js';
+
 export interface Participant {
   id: string;
   name: string;
@@ -53,6 +55,9 @@ export interface Transaction {
 export interface Ledger {
   id: string;
   title: string;
+  baseCurrencyCode?: string;
+  currencies?: Currency[];
+  exchangeRates?: ExchangeRate[];
   groups: Group[];
   participants: Participant[];
   transactions: Transaction[];

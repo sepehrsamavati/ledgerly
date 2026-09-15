@@ -156,6 +156,66 @@ export function calculateSettlement(balances: Record<string, bigint>): Debt[] {
   return debts;
 }
 
+export function findExchangeRate(
+  fromCurrencyCode: string,
+  toCurrencyCode: string,
+  exchangeRates: ExchangeRate[] = []
+): number {
+  if (fromCurrencyCode === toCurrencyCode) return 1.0;
+
+  // Direct rate lookup
+  const direct = exchangeRates.find(
+    (r) => r.fromCurrencyCode === fromCurrencyCode && r.toCurrencyCode === toCurrencyCode
+  );
+  if (direct) return direct.rate;
+
+  // Inverse rate lookup
+  const inverse = exchangeRates.find(
+    (r) => r.fromCurrencyCode === toCurrencyCode && r.toCurrencyCode === fromCurrencyCode
+  );
+  if (inverse && inverse.rate > 0) return 1 / inverse.rate;
+
+  // Default fallback if no rate configured
+  return 1.0;
+}
+
+export function convertAmount(
+  amount: bigint,
+  fromCurrencyCode: string,
+  toCurrencyCode: string,
+  exchangeRates: ExchangeRate[] = []
+): bigint {
+  if (fromCurrencyCode === toCurrencyCode) return amount;
+  const rate = findExchangeRate(fromCurrencyCode, toCurrencyCode, exchangeRates);
+  const rateScaled = BigInt(Math.round(rate * 10000));
+  return (amount * rateScaled) / 10000n;
+}
+
+export function calculateParticipantBalancesWithRates(
+  transactions: Transaction[],
+  targetCurrencyCode: string,
+  exchangeRates: ExchangeRate[] = []
+): Record<string, bigint> {
+  const convertedTransactions = transactions.map((tx) => {
+    if (tx.currencyCode === targetCurrencyCode) return tx;
+
+    const convertedAmount = convertAmount(tx.amount, tx.currencyCode, targetCurrencyCode, exchangeRates);
+    const convertedSplits = tx.splits.map((s) => ({
+      ...s,
+      amount: convertAmount(s.amount, tx.currencyCode, targetCurrencyCode, exchangeRates),
+    }));
+
+    return {
+      ...tx,
+      amount: convertedAmount,
+      currencyCode: targetCurrencyCode,
+      splits: convertedSplits,
+    };
+  });
+
+  return calculateParticipantBalances(convertedTransactions);
+}
+
 export function convertCurrency(
   amount: bigint,
   rate: ExchangeRate
