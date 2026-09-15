@@ -14,7 +14,14 @@
   },
   "actions": {
     "changeLanguage": "Language / زبان",
-    "addExpense": "Add Expense"
+    "addExpense": "Add Expense",
+    "createGroup": "Create Group",
+    "addPerson": "Add Person",
+    "addItem": "Add Item / Expense",
+    "addTransaction": "Add Transaction",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete"
   },
   "dashboard": {
     "welcome": "Welcome to Ledgerly",
@@ -22,7 +29,36 @@
   },
   "groups": {
     "title": "Groups",
-    "empty": "No groups created yet."
+    "modelType": "Group Model",
+    "costingModel": "Group Costing (Itemized Equal Share)",
+    "businessModel": "Business Sharing (Percentage Income/Outcome)",
+    "costingDesc": "Items & expenses shared equally among selected users",
+    "businessDesc": "Business revenue and expenses split by defined ownership percentage",
+    "empty": "No groups created yet. Create a Group Costing or Business Sharing group.",
+    "createNew": "Create New Group",
+    "groupName": "Group Name",
+    "description": "Description",
+    "currency": "Default Currency",
+    "members": "Group Members",
+    "businessMembers": "Business Partners & Percentages",
+    "memberName": "Name",
+    "memberPercentage": "Sharing %",
+    "balances": "Net Balances",
+    "settlement": "Settlement & Debts",
+    "transactions": "Group Expenses / Items",
+    "businessTransactions": "Business Transactions (Income / Outcome)",
+    "itemTitle": "Item Title",
+    "splitAmong": "Shared Equally Among",
+    "type": "Type",
+    "income": "Business Income (Received)",
+    "outcome": "Business Expense (Paid)",
+    "payer": "Paid by",
+    "receiver": "Received by / Paid by",
+    "amount": "Amount",
+    "date": "Date",
+    "titleLabel": "Title",
+    "settleUp": "Settlement suggest:",
+    "owesTo": "owes"
   },
   "settings": {
     "title": "Settings",
